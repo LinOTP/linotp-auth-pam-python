@@ -75,6 +75,7 @@ import syslog
 import urllib
 import urllib2
 import pwd
+import ssl
 
 LINOTP_FAIL = ":-/"
 LINOTP_OK = ":-)"
@@ -96,7 +97,16 @@ def get_config( argv ):
     # split the config parameters
     if "debug" in argv:
         config["debug"] = True
-
+    # Make nosslcertverify option work, allow people to use self-signed certs
+    if "nosslcertverify" in argv:
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:
+            # Legacy Python that doesn't verify HTTPS certificates by default
+            pass
+        else:
+            # Handle target environment that doesn't support HTTPS verification
+            ssl._create_default_https_context = _create_unverified_https_context
     # parse parameter
     for arg in argv:
 

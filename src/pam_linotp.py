@@ -213,7 +213,9 @@ def check_response( pamh, ret, user, config ):
     elif len( ret ) > len( LINOTP_REJECT ) and ret.startswith( LINOTP_REJECT ):
         syslog.syslog( "in challenge mode" )
         parts = ret.split( ' ' )
-        challenge = "Otp: "
+        ## What you want users to be prompted for
+        challenge_prompt = "OTP:"
+        challenge = challenge_prompt
         state = ""
 
         if len( parts ) > 1:
@@ -223,7 +225,8 @@ def check_response( pamh, ret, user, config ):
             del parts[0]
             del parts[0]
             challenge = " ".join( parts )
-
+            ## The original OTP prompt was overwritten by the message from the server. Add it back. 
+            challenge=challenge+" - "+challenge_prompt
         msg = pamh.Message( pamh.PAM_PROMPT_ECHO_OFF, challenge )
         rsp = pamh.conversation( msg )
         pamh.authtok = rsp.resp

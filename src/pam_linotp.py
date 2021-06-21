@@ -75,6 +75,7 @@ import syslog
 import urllib
 import urllib2
 import pwd
+import ssl
 
 LINOTP_FAIL = ":-/"
 LINOTP_OK = ":-)"
@@ -96,7 +97,16 @@ def get_config( argv ):
     # split the config parameters
     if "debug" in argv:
         config["debug"] = True
-
+    # Make nosslcertverify option work, allow people to use self-signed certs
+    if "nosslcertverify" in argv:
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:
+            # Legacy Python that doesn't verify HTTPS certificates by default
+            pass
+        else:
+            # Handle target environment that doesn't support HTTPS verification
+            ssl._create_default_https_context = _create_unverified_https_context
     # parse parameter
     for arg in argv:
 
@@ -213,7 +223,9 @@ def check_response( pamh, ret, user, config ):
     elif len( ret ) > len( LINOTP_REJECT ) and ret.startswith( LINOTP_REJECT ):
         syslog.syslog( "in challenge mode" )
         parts = ret.split( ' ' )
-        challenge = "Otp: "
+        ## What you want users to be prompted for
+        challenge_prompt = "OTP:"
+        challenge = challenge_prompt
         state = ""
 
         if len( parts ) > 1:
@@ -223,7 +235,8 @@ def check_response( pamh, ret, user, config ):
             del parts[0]
             del parts[0]
             challenge = " ".join( parts )
-
+            ## The original OTP prompt was overwritten by the message from the server. Add it back. 
+            challenge=challenge+" - "+challenge_prompt
         msg = pamh.Message( pamh.PAM_PROMPT_ECHO_OFF, challenge )
         rsp = pamh.conversation( msg )
         pamh.authtok = rsp.resp
